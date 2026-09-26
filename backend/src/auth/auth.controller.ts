@@ -28,8 +28,7 @@ export class AuthController {
   signUp(@Body() dto: userDtos): Promise<any> {
     return this.authService.register(dto);
   }
-
-  @Post('login')
+  
   @Post('logIn')
   signIn(@Body() dto: loginDtos): Promise<any> {
     return this.authService.logIn(dto);
