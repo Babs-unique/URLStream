@@ -7,6 +7,8 @@ import {
   Post,
   Req,
   UseGuards,
+  HttpCode,
+  HttpStatus
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';

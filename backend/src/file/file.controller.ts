@@ -5,7 +5,9 @@ import {
   Req,
   UseInterceptors,
   UploadedFile,
-  ParseFilePipeBuilder,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
   HttpStatus,
   HttpException,
 } from '@nestjs/common';
@@ -13,6 +15,7 @@ import type { Express, Request } from 'express';
 import { FileService } from './file.service';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
+import {  FlexibleFileValidationPipe } from './file.pipe';
 
 type AuthenticatedRequest = Request & {
   user: {
@@ -30,17 +33,24 @@ export class FileController {
   @UseInterceptors(FileInterceptor('file'))
   uploadFile(
     @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: /^(image\/jpeg|image\/png|image\/webp|image\/gif|application\/pdf|text\/plain|application\/json|text\/csv|video\/mp4|video\/webm|audio\/mpeg|audio\/wav|audio\/ogg|audio\/webm)$/i,
-        })
-        .addMaxSizeValidator({
-          maxSize: 100 * 1024 * 1024,
-          message: 'File is too large. Maximum size is 100MB.',
-        })
-        .build({
-          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-        }),
+      new ParseFilePipe({
+        validators: [
+          new FileTypeValidator({
+            fileType: /(image\/jpeg|image\/png|image\/webp|image\/gif|application\/pdf|text\/plain|application\/json|text\/csv|video\/mp4|video\/webm|audio\/mpeg|audio\/wav|audio\/ogg|audio\/webm)/i,
+            skipMagicNumbersValidation: true
+          }),
+          new MaxFileSizeValidator({
+            maxSize: 100 * 1024 * 1024,
+            message: 'File is too large. Maximum size is 100MB.',
+          }),
+        ],
+        // exceptionFactory: () =>
+        //   new HttpException(
+        //     'Validation failed',
+        //     HttpStatus.UNPROCESSABLE_ENTITY,
+        //   ),
+      }),
+      FlexibleFileValidationPipe,
     )
     file: Express.Multer.File,
     @Req() req: AuthenticatedRequest,

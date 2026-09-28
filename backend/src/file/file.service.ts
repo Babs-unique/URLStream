@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+    BadRequestException,
+    Injectable,
+    NotFoundException 
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -9,7 +13,7 @@ import type { Express } from 'express';
 export class FileService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private readonly permanentDir = path.join(process.cwd(), 'uploads', 'permanent');
+  private readonly permanentDir = path.join(process.cwd(), 'storage', 'permanent');
 
   async upload(file: Express.Multer.File, userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -17,9 +21,9 @@ export class FileService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-
+    const storageUUID = crypto.randomUUID();
     const temporaryPath = file.path;
-    const permanentPath = path.join(this.permanentDir, file.filename);
+    const permanentPath = path.join(this.permanentDir, storageUUID);
 
     await fs.mkdir(this.permanentDir, { recursive: true });
 
@@ -28,7 +32,7 @@ export class FileService {
     try {
       fileRecord = await this.prisma.file.create({
         data: {
-          storageKey: crypto.randomUUID(),
+          storageKey: storageUUID,
           originalName: file.originalname,
           mimeType: file.mimetype,
           size: file.size,
@@ -36,7 +40,19 @@ export class FileService {
         },
       });
 
-      await fs.rename(temporaryPath, permanentPath);
+      //CROSS-DEVICE MOVE FIX
+      try {
+        // Fast move (Works if folders are on the same partition)
+        await fs.rename(temporaryPath, permanentPath);
+      } catch (renameError: any) {
+        // Fallback move (If directories are on different drive partitions/Docker volumes)
+        if (renameError.code === 'EXDEV') {
+          await fs.copyFile(temporaryPath, permanentPath);
+          await fs.unlink(temporaryPath);
+        } else {
+          throw renameError;
+        }
+      }
 
       return {
         id: fileRecord.id,
@@ -52,11 +68,14 @@ export class FileService {
 
       try {
         await fs.unlink(temporaryPath);
-      } catch (deleteError) {
-        console.error('Failed to delete temp file:', {
-          temporaryPath,
-          deleteError,
-        });
+      } catch (deleteError: any) {
+        // If the error was an EXDEV error and it already wiped the temp file, ignore this error
+        if (deleteError.code !== 'ENOENT') {
+          console.error('Failed to delete temp file:', {
+            temporaryPath,
+            deleteError,
+          });
+        }
       }
 
       const message = error instanceof Error ? error.message : 'Unknown file upload error';
