@@ -7,6 +7,7 @@ import {
   Param,
   Headers,
   Res,
+  Delete,
   UseInterceptors,
   UploadedFile,
   ParseFilePipe,
@@ -114,6 +115,34 @@ export class FileController {
     }
 
     return this.fileService.stream(id, userId , range, res);
+  }
+  @UseGuards(AuthGuard)
+  @Get(':id')
+  getFile(@Param('id',  ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+    const userId = req.user.sub;
+    if(!userId){
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+    }
+    return this.fileService.getFile(id, userId);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get()
+  getFiles(@Req() req: AuthenticatedRequest){
+    const userId = req.user.sub;
+    if(!userId){
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+    }
+    return this.fileService.getFiles(userId);
+  }
+  @UseGuards(AuthGuard)
+  @Delete(':id')
+  deleteFile(@Param('id',  ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest){
+    const userId = req.user.sub;
+    if(!userId){
+      throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+    }
+    return this.fileService.deleteFile(id, userId);
   }
 
 }

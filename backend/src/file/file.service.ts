@@ -1,10 +1,11 @@
 import { 
-    BadRequestException,
+    BadRequestException, 
     Injectable, 
     NotFoundException, 
     StreamableFile, 
     HttpException, 
-    HttpStatus 
+    HttpStatus, 
+    ForbiddenException 
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import path from 'node:path';
@@ -31,6 +32,7 @@ export class FileService {
 
     const storageUUID = crypto.randomUUID();
     const permanentPath = path.join(this.permanentDir, storageUUID);
+
     await fs.mkdir(this.permanentDir, { recursive: true });
 
     let fileRecord;
@@ -68,7 +70,6 @@ export class FileService {
       if (fileRecord?.id) {
         await this.prisma.file.delete({ where: { id: fileRecord.id } }).catch(() => undefined);
       }
-
       try {
         await fs.unlink(temporaryPath);
       } catch (deleteError: any) {
@@ -76,7 +77,6 @@ export class FileService {
           console.error('Failed to delete temp file:', { temporaryPath, deleteError });
         }
       }
-
       const message = error instanceof Error ? error.message : 'Unknown file upload error';
       throw new BadRequestException(`Failed to save file: ${message}`);
     }
@@ -92,8 +92,9 @@ export class FileService {
     if (!file) {
       throw new NotFoundException('File not found');
     }
+
     if (file.userId !== userId) {
-      throw new BadRequestException('File does not belong to user');
+      throw new ForbiddenException('File does not belong to user'); 
     }
 
     const permanentPath = path.join(this.permanentDir, file.storageKey);
@@ -109,7 +110,6 @@ export class FileService {
     // Standard Full File Request(No Range)
     if (!range) {
       const fileStream = createReadStream(permanentPath);
-      
       return new StreamableFile(fileStream, {
         type: file.mimeType,
         disposition: disposition,
@@ -120,7 +120,6 @@ export class FileService {
     // Range Request (Partial Content)
     const fileStats = await fs.stat(permanentPath);
     const totalSize = fileStats.size;
-
     const parts = range.replace(/bytes=/, '').split('-');
     let start = parseInt(parts[0], 10);
     let end = parseInt(parts[1], 10);
@@ -145,12 +144,80 @@ export class FileService {
     res.set({
       'Content-Range': `bytes ${start}-${end}/${totalSize}`,
       'Accept-Ranges': 'bytes',
-    })
+    });
 
     return new StreamableFile(fileStream, {
       type: file.mimeType,
       disposition: disposition,
       length: chunkSize,
-    })
+    });
+  }
+
+  async getFile(id: string, userId: string) { 
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const file = await this.prisma.file.findUnique({ where: { id } });
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+
+    if (file.userId !== userId) {
+      throw new ForbiddenException('File does not belong to user'); 
+    }
+
+    return {
+      id: file.id,
+      storageKey: file.storageKey,
+      originalName: file.originalName,
+      mimeType: file.mimeType,
+      size: file.size,
+    };
+  }
+
+  async getFiles(userId: string) { 
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return this.prisma.file.findMany({ where: { userId: userId } });
+  }
+
+  async deleteFile(id: string, userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const file = await this.prisma.file.findUnique({ where: { id } });
+    
+    if (!file) {
+      return;
+    }
+
+    if (file.userId !== userId) {
+      throw new ForbiddenException('File does not belong to user');
+    }
+
+    const permanentPath = path.join(this.permanentDir, file.storageKey);
+
+    try {
+      await fs.unlink(permanentPath);
+    } catch (fsError: any) {
+      if (fsError.code !== 'ENOENT') {
+        console.error(`Failed to delete file from disk: ${permanentPath}`, fsError);
+        throw new BadRequestException('Failed to delete physical file from storage');
+      }
+    }
+    try {
+      await this.prisma.file.delete({ where: { id } });
+    } catch (dbError: any) {
+      if (dbError.code !== 'P2025') {
+        console.error(`Failed to remove file record from database: ${id}`, dbError);
+        throw new BadRequestException('Failed to clean up database file record');
+      }
+    }
   }
 }
