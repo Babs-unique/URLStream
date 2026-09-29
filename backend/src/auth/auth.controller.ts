@@ -32,6 +32,7 @@ export class AuthController {
   }
   
   @Post('logIn')
+  @HttpCode(HttpStatus.OK)
   signIn(@Body() dto: loginDtos): Promise<any> {
     return this.authService.logIn(dto);
   }
