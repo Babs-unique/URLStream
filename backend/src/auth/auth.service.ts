@@ -79,6 +79,7 @@ export class AuthService {
         id: true,
         name: true,
         email: true,
+        storageQuota: true,
         createdAt: true,
         deletedAt: true,
       },

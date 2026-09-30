@@ -13,6 +13,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import type { Express, Response } from 'express';
 import { createReadStream } from 'node:fs';
+import sanitize  from 'sanitize-filename';
+import contentDisposition from 'content-disposition';
 
 @Injectable()
 export class FileService {
@@ -28,6 +30,23 @@ export class FileService {
     if (!user) {
       await fs.unlink(temporaryPath).catch(() => undefined);
       throw new NotFoundException('User not found');
+    }
+    const existingFiles = await this.prisma.file.findMany({
+      where: { userId },
+      select: { size: true } 
+    });
+
+    const totalUsedStorage = existingFiles.reduce((sum, currentFile) => sum + currentFile.size, 0);
+
+    const newTotalSize = totalUsedStorage + file.size;
+
+    const quotaLimit = user.storageQuota ?? 0; 
+
+    if (newTotalSize > quotaLimit) {
+      await fs.unlink(temporaryPath).catch(() => undefined);
+      throw new BadRequestException(
+        `Storage quota exceeded. Available: ${Number(quotaLimit)  - totalUsedStorage} bytes. Attempted to upload: ${file.size} bytes.`
+      );
     }
 
     const storageUUID = crypto.randomUUID();
@@ -104,8 +123,10 @@ export class FileService {
       throw new NotFoundException('File not found on disk.');
     }
 
-    const encodedFileName = encodeURIComponent(file.originalName);
-    const disposition = `attachment; filename="${file.originalName}"; filename*=UTF-8''${encodedFileName}`;
+    // const encodedFileName = encodeURIComponent(file.originalName);
+    // const disposition = `attachment; filename="${file.originalName}"; filename*=UTF-8''${encodedFileName}`;
+    const safeFileName = sanitize(file.originalName);
+    const disposition = (contentDisposition as any)(safeFileName, { type: 'attachment' });
 
     // Standard Full File Request(No Range)
     if (!range) {

@@ -1,5 +1,5 @@
 import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
-import { fileTypeFromBuffer } from 'file-type'; // 1. Changed to FromBuffer
+import { fileTypeFromBuffer } from 'file-type'; 
 import * as fs from 'fs';
 
 @Injectable()

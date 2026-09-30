@@ -17,6 +17,7 @@ model User {
   email     String    @unique
   name      String
   password  String
+  storageQuota BigInt  @default(2147483648)
   deletedAt DateTime?
   createdAt DateTime  @default(now())
 
