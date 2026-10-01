@@ -8,6 +8,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { AUTH_COOKIE_NAME } from '../cookie.constants.js';
 
 type JwtPayload = {
   sub: string;
@@ -22,11 +23,13 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<Request & { user: JwtPayload }>();
-    const token = this.extractTokenFromHeader(request);
+    const request = context.switchToHttp().getRequest<
+      Request & { cookies?: Record<string, string | undefined>; user: JwtPayload }
+    >();
+    const token = request.cookies?.[AUTH_COOKIE_NAME];
 
     if (!token) {
-      throw new UnauthorizedException('Missing bearer token');
+      throw new UnauthorizedException('Missing authentication cookie');
     }
 
     try {
@@ -50,10 +53,5 @@ export class AuthGuard implements CanActivate {
     }
 
     return true;
-  }
-
-  private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
   }
 }

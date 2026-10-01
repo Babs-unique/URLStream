@@ -92,7 +92,7 @@ export class AuthService {
     return user;
   }
 
-  async updateUser(userId: string, dto: userDtos): Promise<User> {
+  async updateUser(userId: string, dto: userDtos): Promise<Omit<User, 'password'>> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -120,12 +120,20 @@ export class AuthService {
         name: normalizedName,
         email: normalizedEmail,
       },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        storageQuota: true,
+        createdAt: true,
+        deletedAt: true,
+      },
     });
 
     return updatedUser;
   }
 
-  async deleteUser(userId: string): Promise<User> {
+  async deleteUser(userId: string): Promise<Omit<User, 'password'>> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -136,6 +144,14 @@ export class AuthService {
 
     const deletedUser = await this.prisma.user.delete({
       where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        storageQuota: true,
+        createdAt: true,
+        deletedAt: true,
+      },
     });
 
     return deletedUser;
