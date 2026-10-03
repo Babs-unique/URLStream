@@ -16,7 +16,7 @@ async function bootstrap() {
     transform: true,
   }));
   app.use(cookieParser(process.env.COOKIE_SECRET));
-  const frontendOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173')
+  const frontendOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5174')
     .split(',')
     .map((origin) => origin.trim());
   app.enableCors({ origin: frontendOrigins, credentials: true });

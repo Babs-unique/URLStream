@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { loginDtos, userDtos } from './dtos/user.dtos';
+import { loginDtos, updateUserDtos, userDtos } from './dtos/user.dtos';
 import { AuthGuard } from './guards/auth.guard';
 import { AUTH_COOKIE_NAME } from './cookie.constants.js';
 import {
@@ -163,7 +163,7 @@ export class AuthController {
   @Post('updateUser')
   @ApiCookieAuth(AUTH_COOKIE_NAME)
   @ApiOperation({ summary: 'Update the authenticated user name and email' })
-  @ApiBody({ type: userDtos })
+  @ApiBody({ type: updateUserDtos })
   @ApiOkResponse({
     description: 'Updated user record without the password hash.',
     schema: {
@@ -187,7 +187,7 @@ export class AuthController {
   })
   @ApiUnauthorizedResponse({ description: 'Authentication cookie is missing, invalid, or expired.' })
   @ApiConflictResponse({ description: 'The requested email is already in use.' })
-  updateUser(@Req() req: AuthenticatedRequest, @Body() dto: userDtos): Promise<any> {
+  updateUser(@Req() req: AuthenticatedRequest, @Body() dto: updateUserDtos): Promise<any> {
     const userId = req.user.sub;
     return this.authService.updateUser(userId, dto);
   }

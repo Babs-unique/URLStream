@@ -8,7 +8,11 @@ import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcrypt';
 import { User } from '../../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { loginDtos, userDtos } from './dtos/user.dtos.js';
+import { loginDtos, updateUserDtos, userDtos } from './dtos/user.dtos.js';
+
+type PublicUser = Omit<User, 'password' | 'storageQuota'> & {
+  storageQuota: number;
+};
 
 @Injectable()
 export class AuthService {
@@ -72,7 +76,7 @@ export class AuthService {
     };
   }
 
-  async me(userId: string): Promise<Omit<User, 'password'>> {
+  async me(userId: string): Promise<PublicUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -89,10 +93,10 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    return { ...user, storageQuota: Number(user.storageQuota) };
   }
 
-  async updateUser(userId: string, dto: userDtos): Promise<Omit<User, 'password'>> {
+  async updateUser(userId: string, dto: updateUserDtos): Promise<PublicUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -130,10 +134,10 @@ export class AuthService {
       },
     });
 
-    return updatedUser;
+    return { ...updatedUser, storageQuota: Number(updatedUser.storageQuota) };
   }
 
-  async deleteUser(userId: string): Promise<Omit<User, 'password'>> {
+  async deleteUser(userId: string): Promise<PublicUser> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -154,6 +158,6 @@ export class AuthService {
       },
     });
 
-    return deletedUser;
+    return { ...deletedUser, storageQuota: Number(deletedUser.storageQuota) };
   }
 }
