@@ -1,44 +1,40 @@
 # syntax=docker/dockerfile:1
 
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Dockerfile reference guide at
-# https://docs.docker.com/go/dockerfile-reference/
-
-# Want to help us make this template better? Share your feedback here: https://forms.gle/ybq9Krt8jtBL3iCk7
-
 ARG NODE_VERSION=22.16.0
 
-FROM node:${NODE_VERSION}-alpine
-
-
-
-# Use development mode for the NestJS dev server container.
-ENV NODE_ENV development
+# =========================
+# Build stage
+# =========================
+FROM node:${NODE_VERSION}-alpine AS builder
 
 WORKDIR /usr/src/app
 
-# Download dependencies as a separate step to take advantage of Docker's caching.
-# Keep dev dependencies installed so Nest CLI and TypeScript tools are available.
-RUN --mount=type=bind,source=package.json,target=package.json \
-    --mount=type=bind,source=package-lock.json,target=package-lock.json \
-    --mount=type=cache,target=/root/.npm \
-    npm ci
+COPY package*.json ./
 
-# Run the application as a non-root user.
-#USER node
+RUN npm ci
 
-# Copy the rest of the source files into the image.
 COPY . .
 
-# Give the node user ownership of the application files.
-RUN mkdir -p /usr/src/app/dist \
-    && chown -R node:node /usr/src/app
+RUN npm run build
 
-# Switch to the node user.
-USER node
 
-# Expose the port that the application listens on.
+# =========================
+# Production stage
+# =========================
+FROM node:${NODE_VERSION}-alpine AS production
+
+ENV NODE_ENV=production
+
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+
+RUN npm ci --omit=dev
+
+COPY --from=builder /usr/src/app/dist ./dist
+
 EXPOSE 3030
 
-# Run the application.
+USER node
+
 CMD ["npm", "run", "start:prod"]
