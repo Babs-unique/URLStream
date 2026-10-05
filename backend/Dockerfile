@@ -41,4 +41,4 @@ USER node
 EXPOSE 3030
 
 # Run the application.
-CMD ["npm", "run", "start:dev"]
+CMD ["npm", "run", "start:prod"]
