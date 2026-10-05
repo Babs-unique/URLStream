@@ -35,6 +35,9 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /usr/src/app/dist ./dist
 
+RUN mkdir -p storage/tmp storage/files \
+    && chown -R node:node /usr/src/app
+
 EXPOSE 3030
 
 USER node
