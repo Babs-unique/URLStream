@@ -1,7 +1,7 @@
-[
+{
     "rewrites": [
         {
-            "source": "/api/:path",
+            "source": "/api/:path*",
             "destination": "https://urlstream.onrender.com"
         },
         {
@@ -9,4 +9,4 @@
             "destination": "/index.html"
         }
     ]
-]
+}

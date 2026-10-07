@@ -19,7 +19,7 @@ async function bootstrap() {
   const frontendOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5174')
     .split(',')
     .map((origin) => origin.trim());
-  app.enableCors({ origin: frontendOrigins, credentials: true });
+   app.enableCors({ origin: frontendOrigins, credentials: true });
    const config = new DocumentBuilder()
     .setTitle('URLStream API')
     .setDescription('Documentation of URLStream API')
