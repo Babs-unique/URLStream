@@ -1,0 +1,12 @@
+[
+    "rewrites": [
+        {
+            "source": "/api/:path",
+            "destination": "https://urlstream.onrender.com"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+]
