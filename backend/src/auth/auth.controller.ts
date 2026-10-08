@@ -107,7 +107,7 @@ export class AuthController {
     response.cookie(AUTH_COOKIE_NAME, result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'none',
       path: '/',
     });
     return { user: result.user };
@@ -121,7 +121,7 @@ export class AuthController {
     response.clearCookie(AUTH_COOKIE_NAME, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'none',
       path: '/',
     });
     return { message: 'Logged out' };
